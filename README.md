@@ -27,12 +27,9 @@ Invoice Lumbung.xlsx, prior quarter reports) that aren't in this repo.
 2. Run the workflow manually: Actions tab -> "Odoo Quarterly Export" ->
    "Run workflow".
 
-3. The two `.xlsx` files land in
-   `gs://bucket_som/github_actions_trial/odoo_quarterly_export/` - a path
-   separate from the paths the local pipeline uses, so this trial can't
-   collide with production files. They're also attached as the
-   `odoo-quarterly-export` workflow artifact as a backup/manual-download
-   option.
+3. The two `.xlsx` files land in `gs://bucket_som/sales_parquet/raw/primary/odoo/`.
+   They're also attached as the `odoo-quarterly-export` workflow artifact
+   as a backup/manual-download option.
 
 ## Notes
 
