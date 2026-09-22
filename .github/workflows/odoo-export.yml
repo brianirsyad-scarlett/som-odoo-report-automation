@@ -1,0 +1,64 @@
+﻿name: Odoo Quarterly Export
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Every 3 hours starting 00:00 Asia/Jakarta (WIB, UTC+7): 00,03,06,09,
+    # 12,15,18,21 WIB = 17,20,23,02,05,08,11,14 UTC. GitHub Actions cron is
+    # always UTC, and can be delayed at exact-hour trigger times (high load
+    # across all of GitHub) - this schedule is still exact-hour in UTC.
+    - cron: "0 2,5,8,11,14,17,20,23 * * *"
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write .env from secrets
+        run: |
+          cat <<EOF > .env
+          ODOO_URL=${{ secrets.ODOO_URL }}
+          ODOO_DB=${{ secrets.ODOO_DB }}
+          ODOO_USERNAME=${{ secrets.ODOO_USERNAME }}
+          ODOO_PASSWORD=${{ secrets.ODOO_PASSWORD }}
+          EOF
+
+      - name: Write GCS credentials from secret
+        run: |
+          cat <<'EOF' > gcp_key.json
+          ${{ secrets.GCP_SA_KEY }}
+          EOF
+
+      - name: Download reference/prior-quarter files from GCS
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp_key.json
+        run: python download_from_gcs.py
+
+      - name: Run Odoo quarterly export
+        run: python odoo_quarterly_export.py
+
+      - name: Build quarter Odoo Report
+        run: python build_odoo_report.py --replace-production
+
+      - name: Build master Odoo Report
+        run: python build_master_report.py --replace-production
+
+      - name: Upload outputs to GCS
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp_key.json
+        run: python upload_to_gcs.py
+
+      - name: Upload exported files (artifact backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: odoo-quarterly-export
+          path: "*.xlsx"
+          retention-days: 30
