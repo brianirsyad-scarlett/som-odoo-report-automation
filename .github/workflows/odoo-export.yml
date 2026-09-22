@@ -1,0 +1,36 @@
+name: Odoo Quarterly Export
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write .env from secrets
+        run: |
+          cat <<EOF > .env
+          ODOO_URL=${{ secrets.ODOO_URL }}
+          ODOO_DB=${{ secrets.ODOO_DB }}
+          ODOO_USERNAME=${{ secrets.ODOO_USERNAME }}
+          ODOO_PASSWORD=${{ secrets.ODOO_PASSWORD }}
+          EOF
+
+      - name: Run Odoo quarterly export
+        run: python odoo_quarterly_export.py
+
+      - name: Upload exported files
+        uses: actions/upload-artifact@v4
+        with:
+          name: odoo-quarterly-export
+          path: "*.xlsx"
+          retention-days: 30
