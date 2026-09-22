@@ -2,7 +2,8 @@
 
 Trial: runs `odoo_quarterly_export.py` on GitHub Actions instead of locally.
 Pulls the current quarter's Sales Order and Sales Analysis exports directly
-from Odoo's API and uploads them as workflow artifacts.
+from Odoo's API, uploads them to GCS, and also keeps them as a workflow
+artifact backup.
 
 This is step 1 of the local Odoo report pipeline only. The two build steps
 (`build_odoo_report.py`, `build_master_report.py`) are not included yet -
@@ -16,6 +17,9 @@ Invoice Lumbung.xlsx, prior quarter reports) that aren't in this repo.
    - `ODOO_DB`
    - `ODOO_USERNAME`
    - `ODOO_PASSWORD`
+   - `GCP_SA_KEY` - the full contents of the GCS service-account JSON key
+     (the same one the local pipeline uses at
+     `Data\Sent Email\sales-som datawarehouse 490008.json`)
 
    (Values are never committed to this repo - see `.env.example` for the
    format if running locally instead.)
@@ -23,8 +27,12 @@ Invoice Lumbung.xlsx, prior quarter reports) that aren't in this repo.
 2. Run the workflow manually: Actions tab -> "Odoo Quarterly Export" ->
    "Run workflow".
 
-3. Download the `odoo-quarterly-export` artifact from the completed run to
-   get the two `.xlsx` files.
+3. The two `.xlsx` files land in
+   `gs://bucket_som/github_actions_trial/odoo_quarterly_export/` - a path
+   separate from the paths the local pipeline uses, so this trial can't
+   collide with production files. They're also attached as the
+   `odoo-quarterly-export` workflow artifact as a backup/manual-download
+   option.
 
 ## Notes
 
