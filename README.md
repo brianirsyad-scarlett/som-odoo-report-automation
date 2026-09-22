@@ -36,8 +36,8 @@ automatically - nothing in this repo needs editing.
 
 ## Schedules (cron is UTC; times below are Asia/Jakarta, WIB, UTC+7)
 
-- Quarterly export: 00:00, 06:00, 12:00, 18:00 WIB daily
-  (`cron: "0 17,23,5,11 * * *"`)
+- Quarterly export: every 3 hours starting 00:00 WIB daily
+  (`cron: "0 2,5,8,11,14,17,20,23 * * *"`)
 - Weekly backfill: Monday 00:00 WIB (`cron: "0 17 * * 0"`, i.e. Sunday 17:00 UTC)
 
 ## GCS layout this pipeline reads and writes
