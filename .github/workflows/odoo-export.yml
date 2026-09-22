@@ -16,6 +16,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Debug secret lengths (temporary)
+        env:
+          ODOO_URL: ${{ secrets.ODOO_URL }}
+          ODOO_DB: ${{ secrets.ODOO_DB }}
+          ODOO_USERNAME: ${{ secrets.ODOO_USERNAME }}
+          ODOO_PASSWORD: ${{ secrets.ODOO_PASSWORD }}
+        run: |
+          echo "ODOO_URL length: ${#ODOO_URL}"
+          echo "ODOO_DB length: ${#ODOO_DB}"
+          echo "ODOO_USERNAME length: ${#ODOO_USERNAME}"
+          echo "ODOO_PASSWORD length: ${#ODOO_PASSWORD}"
+
       - name: Write .env from secrets
         run: |
           cat <<EOF > .env
