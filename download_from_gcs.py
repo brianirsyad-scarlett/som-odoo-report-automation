@@ -1,26 +1,39 @@
 #!/usr/bin/env python3
 """Download the reference/prior-quarter files build_odoo_report.py and
 build_master_report.py need, into this directory, before running them.
+
+The prior-quarter list is computed from the calendar date (see
+quarter_files.py) rather than hardcoded, so nothing here needs editing when
+a new quarter starts - the current quarter itself is excluded, since
+build_odoo_report.py builds that one fresh in the same run.
 """
 import os
 
 from google.cloud import storage
 
+from quarter_files import current_quarter, master_source_files
+
 BUCKET = "bucket_som"
 
-FILES = [
+REFERENCE_FILES = [
     "sales_parquet/raw/master data/Master Data Customer Odoo.xlsx",
     "sales_parquet/raw/primary/invoice/Invoice Lumbung.xlsx",
-    "sales_parquet/raw/primary/odoo/12. 2025 Odoo Report.xlsx",
-    "sales_parquet/raw/primary/odoo/13. 2026 Q1 Odoo Report.xlsx",
-    "sales_parquet/raw/primary/odoo/14. 2026 Q2 Odoo Report.xlsx",
 ]
+
+
+def prior_quarter_sources():
+    year, quarter = current_quarter()
+    quarter -= 1
+    if quarter == 0:
+        quarter, year = 4, year - 1
+    all_but_current = master_source_files(end_year=year, end_quarter=quarter)
+    return [f"sales_parquet/raw/primary/odoo/{name}" for name in all_but_current]
 
 
 def main():
     client = storage.Client()
     bucket = client.bucket(BUCKET)
-    for source in FILES:
+    for source in REFERENCE_FILES + prior_quarter_sources():
         dest = os.path.basename(source)
         blob = bucket.blob(source)
         if not blob.exists():

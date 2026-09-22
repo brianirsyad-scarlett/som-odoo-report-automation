@@ -22,6 +22,7 @@ from datetime import datetime
 
 import pandas as pd
 
+from quarter_files import master_source_files
 from xlsx_table_writer import write_as_table
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -29,13 +30,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # GitHub Actions runner there is no equivalent to protect, so it's just a
 # throwaway subfolder here.
 BACKUP_ROOT = os.path.join(BASE_DIR, "_backup")
-
-SOURCE_FILES = [
-    "12. 2025 Odoo Report.xlsx",
-    "13. 2026 Q1 Odoo Report.xlsx",
-    "14. 2026 Q2 Odoo Report.xlsx",
-    "15. 2026 Q3 Odoo Report.xlsx",
-]
 
 UPPERCASE_COLUMNS = [
     "CustomerLevel1", "CustomerLevel2", "CustomerState", "CustomerCity", "CustomerName",
@@ -67,8 +61,9 @@ def build_master(source_paths):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--files", nargs="+", default=SOURCE_FILES,
-        help="Quarterly/yearly Odoo Report files to combine (relative to this folder unless absolute).",
+        "--files", nargs="+", default=None,
+        help="Quarterly/yearly Odoo Report files to combine (relative to this folder unless absolute). "
+        "Defaults to every quarter from 2026 Q1 through the current quarter, plus the 2025 legacy file.",
     )
     parser.add_argument("--out", help="Output path. Must not be the production 'Odoo Report.xlsx'.")
     parser.add_argument(
@@ -79,7 +74,8 @@ def main():
     if not args.out and not args.replace_production:
         sys.exit("Pass either --out <path> or --replace-production.")
 
-    source_paths = [p if os.path.isabs(p) else os.path.join(BASE_DIR, p) for p in args.files]
+    files = args.files if args.files is not None else master_source_files()
+    source_paths = [p if os.path.isabs(p) else os.path.join(BASE_DIR, p) for p in files]
     missing = [p for p in source_paths if not os.path.exists(p)]
     if missing:
         sys.exit("Missing source file(s):\n  " + "\n  ".join(missing))

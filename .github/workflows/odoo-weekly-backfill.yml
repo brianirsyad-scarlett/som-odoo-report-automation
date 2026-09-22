@@ -1,14 +1,13 @@
-name: Odoo Quarterly Export
+name: Odoo Weekly Backfill
 
 on:
   workflow_dispatch: {}
   schedule:
-    # 00:00, 06:00, 12:00, 18:00 Asia/Jakarta (WIB, UTC+7) = 17:00, 23:00,
-    # 05:00, 11:00 UTC. GitHub Actions cron is always UTC.
-    - cron: "0 17,23,5,11 * * *"
+    # Monday 00:00 Asia/Jakarta (WIB, UTC+7) = Sunday 17:00 UTC.
+    - cron: "0 17 * * 0"
 
 jobs:
-  export:
+  backfill:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,28 +34,14 @@ jobs:
           ${{ secrets.GCP_SA_KEY }}
           EOF
 
-      - name: Download reference/prior-quarter files from GCS
+      - name: Run full backfill (every quarter Q1 through today)
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp_key.json
-        run: python download_from_gcs.py
-
-      - name: Run Odoo quarterly export
-        run: python odoo_quarterly_export.py
-
-      - name: Build quarter Odoo Report
-        run: python build_odoo_report.py --replace-production
-
-      - name: Build master Odoo Report
-        run: python build_master_report.py --replace-production
-
-      - name: Upload outputs to GCS
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp_key.json
-        run: python upload_to_gcs.py
+        run: python run_full_backfill.py
 
       - name: Upload exported files (artifact backup)
         uses: actions/upload-artifact@v4
         with:
-          name: odoo-quarterly-export
+          name: odoo-weekly-backfill
           path: "*.xlsx"
           retention-days: 30

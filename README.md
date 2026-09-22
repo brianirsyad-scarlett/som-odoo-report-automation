@@ -1,38 +1,52 @@
 # som-odoo-report-automation
 
-Runs the full local Odoo report pipeline on GitHub Actions instead of
-locally: pulls the current quarter's data from Odoo, rebuilds the quarter
-report, rebuilds the all-time master report, and uploads everything to GCS.
+Runs the local Odoo report pipeline on GitHub Actions instead of locally:
+pulls data from Odoo, rebuilds quarter reports, rebuilds the all-time master
+report, and uploads everything to GCS. Two workflows:
 
-Mirrors these three local scripts (copies live in this repo, with paths
+- **Odoo Quarterly Export** (`odoo-export.yml`) - runs 4x/day, refreshes only
+  the current quarter.
+- **Odoo Weekly Backfill** (`odoo-weekly-backfill.yml`) - runs weekly, re-runs
+  every quarter from 2026 Q1 through the current one, since Odoo/Accurate
+  keep back-dating entries into already-closed quarters for a while.
+
+Both mirror these three local scripts (copies live in this repo, with paths
 adapted for GitHub's Linux runners instead of the local D: drive):
 
 1. `odoo_quarterly_export.py` - pulls Sales Order + Sales Analysis from Odoo.
 2. `build_odoo_report.py --replace-production` - rebuilds
    `<seq>. <year> Qn Odoo Report.xlsx` using the two files from step 1 plus
    `Master Data Customer Odoo.xlsx` and `Invoice Lumbung.xlsx` (downloaded
-   from GCS first - see `download_from_gcs.py`).
-3. `build_master_report.py --replace-production` - combines the current
-   quarter's report with the 3 prior quarter/year reports (also downloaded
-   from GCS) into the all-time `Odoo Report.xlsx`.
+   from GCS first).
+3. `build_master_report.py --replace-production` - combines every quarter's
+   report into the all-time `Odoo Report.xlsx`.
 
 The local versions of these scripts and their source files are untouched and
 still run as before - this is a parallel path, not a replacement, until it's
 proven reliable.
 
+## No manual quarter-list editing needed
+
+`quarter_files.py` computes which quarter/year files exist from the calendar
+date (2026 Q1 onward, following `"<seq>. <year> Qn"`, seeded by one fixed
+2025 legacy annual file that predates this pipeline). `build_master_report.py`
+and `download_from_gcs.py` both use it instead of a hardcoded file list, so
+when Q4 2026 (or any later quarter) starts, both workflows pick it up
+automatically - nothing in this repo needs editing.
+
+## Schedules (cron is UTC; times below are Asia/Jakarta, WIB, UTC+7)
+
+- Quarterly export: 00:00, 06:00, 12:00, 18:00 WIB daily
+  (`cron: "0 17,23,5,11 * * *"`)
+- Weekly backfill: Monday 00:00 WIB (`cron: "0 17 * * 0"`, i.e. Sunday 17:00 UTC)
+
 ## GCS layout this pipeline reads and writes
 
-- `gs://bucket_som/sales_parquet/raw/primary/odoo/` - the four quarter/year
-  Odoo Report files (3 prior ones seeded once, the current quarter's gets
-  added/replaced by every run) plus this run's raw Sales Order/Sales
-  Analysis exports and the combined `Odoo Report.xlsx`.
+- `gs://bucket_som/sales_parquet/raw/primary/odoo/` - every quarter/year
+  Odoo Report file, this run's raw Sales Order/Sales Analysis exports, and
+  the combined `Odoo Report.xlsx`.
 - `gs://bucket_som/sales_parquet/raw/master data/Master Data Customer Odoo.xlsx`
 - `gs://bucket_som/sales_parquet/raw/primary/invoice/Invoice Lumbung.xlsx`
-
-Note: `build_master_report.py`'s list of files to combine is a hardcoded
-`SOURCE_FILES` list (matching the local script's behaviour) - each new
-quarter, add a line to that list in this repo, same as the local script
-needs updating.
 
 ## Setup
 
@@ -48,17 +62,15 @@ needs updating.
    (Values are never committed to this repo - see `.env.example` for the
    format if running locally instead.)
 
-2. Run the workflow manually: Actions tab -> "Odoo Quarterly Export" ->
+2. Both workflows also run on demand: Actions tab -> pick the workflow ->
    "Run workflow".
 
-3. Outputs land in GCS as described above. They're also attached as the
-   `odoo-quarterly-export` workflow artifact as a backup/manual-download
-   option (30-day retention).
+3. Outputs land in GCS as described above. They're also attached as a
+   workflow artifact as a backup/manual-download option (30-day retention).
 
 ## Notes
 
-- Trigger is manual (`workflow_dispatch`) only for now. Add a `schedule:`
-  trigger to `.github/workflows/odoo-export.yml` once this has been
-  verified to work reliably over a few runs.
 - Requires Odoo to be reachable over the public internet from GitHub-hosted
   runners (confirmed OK for this instance).
+- The weekly backfill re-exports and rebuilds *every* quarter each run - as
+  more quarters accumulate this will take proportionally longer.
