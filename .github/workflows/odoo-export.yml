@@ -1,4 +1,4 @@
-﻿name: Odoo Quarterly Export
+name: Odoo Quarterly Export
 
 on:
   workflow_dispatch: {}
