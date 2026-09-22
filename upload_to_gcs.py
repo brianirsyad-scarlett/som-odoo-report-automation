@@ -1,25 +1,48 @@
 #!/usr/bin/env python3
-"""Upload the freshly exported Odoo xlsx files to GCS."""
-import glob
+"""Upload this run's outputs to GCS: the two raw Odoo exports, the rebuilt
+quarter report, and the rebuilt all-time master report.
+
+Uploads explicit filenames rather than every *.xlsx in the directory, since
+the working directory also holds downloaded reference/prior-quarter files
+(Master Data Customer Odoo.xlsx, Invoice Lumbung.xlsx, prior quarters) that
+must not be re-uploaded to the wrong place.
+"""
 import os
+from datetime import datetime
 
 from google.cloud import storage
 
 BUCKET = "bucket_som"
 PREFIX = "sales_parquet/raw/primary/odoo/"
 
+SEQ_BASE_YEAR = 2026
+SEQ_BASE_NUMBER = 13
+
+
+def current_quarter_prefix():
+    today = datetime.now()
+    year, quarter = today.year, (today.month - 1) // 3 + 1
+    seq = SEQ_BASE_NUMBER + (year - SEQ_BASE_YEAR) * 4 + (quarter - 1)
+    return f"{seq}. {year} Q{quarter}"
+
 
 def main():
-    files = glob.glob("*.xlsx")
-    if not files:
-        raise SystemExit("No .xlsx files found to upload.")
+    prefix = current_quarter_prefix()
+    filenames = [
+        f"{prefix} Sales Order.xlsx",
+        f"{prefix} Sales Analysis.xlsx",
+        f"{prefix} Odoo Report.xlsx",
+        "Odoo Report.xlsx",
+    ]
 
     client = storage.Client()
     bucket = client.bucket(BUCKET)
-    for path in files:
-        dest = PREFIX + os.path.basename(path)
-        bucket.blob(dest).upload_from_filename(path)
-        print(f"Uploaded {path} -> gs://{BUCKET}/{dest}")
+    for fname in filenames:
+        if not os.path.exists(fname):
+            raise SystemExit(f"Expected output file not found: {fname}")
+        dest = PREFIX + fname
+        bucket.blob(dest).upload_from_filename(fname)
+        print(f"Uploaded {fname} -> gs://{BUCKET}/{dest}")
 
 
 if __name__ == "__main__":

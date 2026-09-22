@@ -25,16 +25,27 @@ jobs:
           ODOO_PASSWORD=${{ secrets.ODOO_PASSWORD }}
           EOF
 
-      - name: Run Odoo quarterly export
-        run: python odoo_quarterly_export.py
-
       - name: Write GCS credentials from secret
         run: |
           cat <<'EOF' > gcp_key.json
           ${{ secrets.GCP_SA_KEY }}
           EOF
 
-      - name: Upload to GCS
+      - name: Download reference/prior-quarter files from GCS
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp_key.json
+        run: python download_from_gcs.py
+
+      - name: Run Odoo quarterly export
+        run: python odoo_quarterly_export.py
+
+      - name: Build quarter Odoo Report
+        run: python build_odoo_report.py --replace-production
+
+      - name: Build master Odoo Report
+        run: python build_master_report.py --replace-production
+
+      - name: Upload outputs to GCS
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp_key.json
         run: python upload_to_gcs.py
