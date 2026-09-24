@@ -1,7 +1,12 @@
 name: Odoo Quarterly Export
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_email:
+        description: "Send the unmatched-customer email even if already sent today"
+        type: boolean
+        default: false
   schedule:
     # Every 3 hours starting 00:00 Asia/Jakarta (WIB, UTC+7): 00,03,06,09,
     # 12,15,18,21 WIB = 17,20,23,02,05,08,11,14 UTC. GitHub Actions cron is
@@ -55,7 +60,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp_key.json
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
-        run: python check_customer_master.py
+        run: python check_customer_master.py ${{ inputs.force_email && '--force-email' || '' }}
 
       - name: Build master Odoo Report
         run: python build_master_report.py --replace-production
