@@ -48,6 +48,15 @@ jobs:
       - name: Build quarter Odoo Report
         run: python build_odoo_report.py --replace-production
 
+      - name: Check customers against Master Data Customer Odoo (email if unmatched)
+        # Never fails the run: a missing master row is a data issue for the user to fix.
+        continue-on-error: true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp_key.json
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
+        run: python check_customer_master.py
+
       - name: Build master Odoo Report
         run: python build_master_report.py --replace-production
 
