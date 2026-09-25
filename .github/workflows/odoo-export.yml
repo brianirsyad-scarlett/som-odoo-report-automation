@@ -7,6 +7,7 @@ on:
         description: "Send the unmatched-customer email even if already sent today"
         type: boolean
         default: false
+  # On time: Power Automate 'GitHub timer' -> dispatch.yml. Cron = backup only.
   schedule:
     # Every 3 hours starting 00:00 Asia/Jakarta (WIB, UTC+7): 00,03,06,09,
     # 12,15,18,21 WIB = 17,20,23,02,05,08,11,14 UTC. GitHub Actions cron is
@@ -15,7 +16,26 @@ on:
     - cron: "0 2,5,8,11,14,17,20,23 * * *"
 
 jobs:
+  # Backup (cron) runs skip themselves when the on-time run started by
+  # dispatch.yml (Power Automate "GitHub timer") already did the work - guard.sh.
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      run: ${{ steps.g.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: g
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash guard.sh odoo-export.yml 170
+
   export:
+    needs: guard
+    if: needs.guard.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
